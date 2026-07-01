@@ -1,26 +1,191 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  /* Sparkle Log — warm, neuro-affirming brand tokens */
+  --color-warm: var(--warm);
+  --color-warm-foreground: var(--warm-foreground);
+  --color-glow: var(--glow);
+  --color-glow-foreground: var(--glow-foreground);
+  --color-soft: var(--soft);
+  --color-soft-foreground: var(--soft-foreground);
+  --color-petal: var(--petal);
+  --color-petal-foreground: var(--petal-foreground);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/*
+ * Sparkle Log — Neuro-affirming, low-saturation, warm palette.
+ * Inspired by soft morning light, gentle pastels, and the feeling of being held.
+ * Colours are intentionally muted to avoid sensory overwhelm.
+ */
+:root {
+  /* Base — warm off-white reminiscent of paper */
+  --background: oklch(0.98 0.005 84);
+  --foreground: oklch(0.28 0.02 84);
+
+  /* Card — slightly warmer than background, like a physical card */
+  --card: oklch(0.97 0.01 78);
+  --card-foreground: oklch(0.28 0.02 84);
+
+  /* Popover — gentle elevation */
+  --popover: oklch(0.99 0.003 84);
+  --popover-foreground: oklch(0.28 0.02 84);
+
+  /* Primary — warm amber / honey */
+  --primary: oklch(0.62 0.12 72);
+  --primary-foreground: oklch(0.99 0.002 84);
+
+  /* Secondary — dusty rose */
+  --secondary: oklch(0.78 0.06 12);
+  --secondary-foreground: oklch(0.28 0.02 84);
+
+  /* Muted — barely-there warmth */
+  --muted: oklch(0.94 0.01 78);
+  --muted-foreground: oklch(0.5 0.02 84);
+
+  /* Accent — soft lavender */
+  --accent: oklch(0.82 0.05 300);
+  --accent-foreground: oklch(0.28 0.02 300);
+
+  /* Destructive — kept gentle */
+  --destructive: oklch(0.55 0.1 12);
+  --destructive-foreground: oklch(0.99 0.002 84);
+
+  /* Borders & inputs — soft, unobtrusive */
+  --border: oklch(0.88 0.02 84);
+  --input: oklch(0.88 0.02 84);
+  --ring: oklch(0.62 0.12 72);
+
+  /* Charts — warm spectrum */
+  --chart-1: oklch(0.62 0.12 72);
+  --chart-2: oklch(0.78 0.06 12);
+  --chart-3: oklch(0.82 0.05 300);
+  --chart-4: oklch(0.7 0.08 180);
+  --chart-5: oklch(0.65 0.1 50);
+
+  --radius: 0.75rem;
+
+  /* Sidebar */
+  --sidebar: oklch(0.96 0.01 78);
+  --sidebar-foreground: oklch(0.28 0.02 84);
+  --sidebar-primary: oklch(0.62 0.12 72);
+  --sidebar-primary-foreground: oklch(0.99 0.002 84);
+  --sidebar-accent: oklch(0.82 0.05 300);
+  --sidebar-accent-foreground: oklch(0.28 0.02 300);
+  --sidebar-border: oklch(0.88 0.02 84);
+  --sidebar-ring: oklch(0.62 0.12 72);
+
+  /* Sparkle Log brand tokens */
+  --warm: oklch(0.62 0.12 72);
+  --warm-foreground: oklch(0.99 0.002 84);
+  --glow: oklch(0.75 0.08 60);
+  --glow-foreground: oklch(0.28 0.02 84);
+  --soft: oklch(0.92 0.02 78);
+  --soft-foreground: oklch(0.4 0.02 84);
+  --petal: oklch(0.82 0.06 12);
+  --petal-foreground: oklch(0.28 0.02 12);
+}
+
+.dark {
+  --background: oklch(0.18 0.01 84);
+  --foreground: oklch(0.9 0.01 84);
+  --card: oklch(0.22 0.01 78);
+  --card-foreground: oklch(0.9 0.01 84);
+  --popover: oklch(0.2 0.01 84);
+  --popover-foreground: oklch(0.9 0.01 84);
+  --primary: oklch(0.62 0.12 72);
+  --primary-foreground: oklch(0.18 0.01 84);
+  --secondary: oklch(0.45 0.06 12);
+  --secondary-foreground: oklch(0.9 0.01 84);
+  --muted: oklch(0.26 0.01 78);
+  --muted-foreground: oklch(0.55 0.02 84);
+  --accent: oklch(0.4 0.05 300);
+  --accent-foreground: oklch(0.9 0.01 300);
+  --destructive: oklch(0.45 0.1 12);
+  --destructive-foreground: oklch(0.9 0.01 84);
+  --border: oklch(0.3 0.02 84);
+  --input: oklch(0.3 0.02 84);
+  --ring: oklch(0.62 0.12 72);
+  --chart-1: oklch(0.62 0.12 72);
+  --chart-2: oklch(0.45 0.06 12);
+  --chart-3: oklch(0.4 0.05 300);
+  --chart-4: oklch(0.5 0.08 180);
+  --chart-5: oklch(0.5 0.1 50);
+  --sidebar: oklch(0.22 0.01 78);
+  --sidebar-foreground: oklch(0.9 0.01 84);
+  --sidebar-primary: oklch(0.62 0.12 72);
+  --sidebar-primary-foreground: oklch(0.18 0.01 84);
+  --sidebar-accent: oklch(0.4 0.05 300);
+  --sidebar-accent-foreground: oklch(0.9 0.01 300);
+  --sidebar-border: oklch(0.3 0.02 84);
+  --sidebar-ring: oklch(0.62 0.12 72);
+
+  /* Sparkle Log brand tokens — dark */
+  --warm: oklch(0.62 0.12 72);
+  --warm-foreground: oklch(0.18 0.01 84);
+  --glow: oklch(0.55 0.08 60);
+  --glow-foreground: oklch(0.18 0.01 84);
+  --soft: oklch(0.24 0.01 78);
+  --soft-foreground: oklch(0.8 0.01 84);
+  --petal: oklch(0.35 0.06 12);
+  --petal-foreground: oklch(0.9 0.01 12);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  html {
+    @apply font-sans;
+  }
 }

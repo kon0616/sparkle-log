@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sparkle Log 数据迁移</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #faf5f0; color: #3d3528;
+    max-width: 520px; margin: 0 auto; padding: 32px 16px;
+  }
+  h1 { font-size: 1.3rem; margin-bottom: 8px; }
+  p { color: #8b7e6a; font-size: .875rem; margin-bottom: 20px; line-height: 1.6; }
+  .card {
+    background: #fff; border: 1px solid #e8dfd3; border-radius: 12px;
+    padding: 20px; margin-bottom: 16px;
+  }
+  button {
+    background: #c4943a; color: #fff; border: none; padding: 10px 20px;
+    border-radius: 8px; font-size: .9rem; cursor: pointer; width: 100%;
+  }
+  button:disabled { opacity: .5; cursor: default; }
+  button.secondary { background: #f0e8d8; color: #5c4a2e; }
+  textarea {
+    width: 100%; min-height: 120px; font-family: monospace; font-size: .75rem;
+    border: 1px solid #e8dfd3; border-radius: 8px; padding: 10px;
+    margin: 12px 0; resize: vertical;
+  }
+  .log { font-size: .8rem; color: #8b7e6a; margin-top: 8px; }
+  .success { color: #2d8a4e; }
+  .error { color: #c44; }
+</style>
+</head>
+<body>
+
+<h1>&#10024; Sparkle Log 数据迁移</h1>
+<p>这个页面需要分别在<b>旧端口 (3456)</b>和<b>新端口 (1919)</b>打开两次：<br/>先在旧端口导出，再在新端口导入。</p>
+
+<!-- Step 1: Export -->
+<div class="card">
+  <h2 style="font-size:1rem;margin-bottom:12px">&#128229; 第一步：导出旧数据</h2>
+  <p>在 <b>http://localhost:3456/migrate.html</b> 打开此页面，点击导出。</p>
+  <button id="exportBtn">导出 sparkle_db 数据</button>
+  <div id="exportLog" class="log"></div>
+  <textarea id="exportData" placeholder="导出后的 JSON 会显示在这里…" readonly></textarea>
+  <button id="copyBtn" class="secondary" style="display:none">复制 JSON</button>
+</div>
+
+<!-- Step 2: Import -->
+<div class="card">
+  <h2 style="font-size:1rem;margin-bottom:12px">&#128228; 第二步：导入到新端口</h2>
+  <p>在 <b>http://localhost:1919/migrate.html</b> 打开此页面，粘贴 JSON 并导入。</p>
+  <textarea id="importData" placeholder="把导出的 JSON 粘贴到这里…"></textarea>
+  <button id="importBtn">导入到 sparkle_db</button>
+  <div id="importLog" class="log"></div>
+</div>
+
+<script src="https://unpkg.com/dexie@4.0.11/dist/dexie.js"></script>
+<script>
+  const db = new Dexie("sparkle_db");
+  db.version(1).stores({ logs: "++id, date, createdAt" });
+  db.version(2).stores({ logs: "++id, date, createdAt", settings: "id" });
+
+  // --- Export ---
+  document.getElementById("exportBtn").onclick = async () => {
+    const logEl = document.getElementById("exportLog");
+    const textarea = document.getElementById("exportData");
+    try {
+      logEl.textContent = "正在读取…";
+      const logs = await db.logs.toArray();
+      let settings = null;
+      try { settings = await db.settings.get(1); } catch (_) {}
+      const data = { logs, settings, exportedAt: new Date().toISOString() };
+      textarea.value = JSON.stringify(data, null, 2);
+      logEl.className = "log success";
+      logEl.textContent = `导出成功：${logs.length} 条日志` + (settings ? " + 设置" : "");
+      document.getElementById("copyBtn").style.display = "";
+    } catch (err) {
+      logEl.className = "log error";
+      logEl.textContent = "导出失败：" + err.message;
+    }
+  };
+
+  document.getElementById("copyBtn").onclick = () => {
+    const ta = document.getElementById("exportData");
+    ta.select(); navigator.clipboard.writeText(ta.value);
+  };
+
+  // --- Import ---
+  document.getElementById("importBtn").onclick = async () => {
+    const logEl = document.getElementById("importLog");
+    const raw = document.getElementById("importData").value.trim();
+    if (!raw) { logEl.textContent = "请先粘贴 JSON 数据"; return; }
+    try {
+      const data = JSON.parse(raw);
+      if (!data.logs) throw new Error("JSON 格式不正确，缺少 logs 字段");
+
+      logEl.textContent = "正在导入…";
+      let logCount = 0;
+      for (const entry of data.logs) {
+        const { id, ...rest } = entry;
+        await db.logs.put(rest);
+        logCount++;
+      }
+      if (data.settings) {
+        await db.settings.put(data.settings);
+      }
+      logEl.className = "log success";
+      logEl.textContent = `导入成功：${logCount} 条日志` + (data.settings ? " + 设置" : "");
+    } catch (err) {
+      logEl.className = "log error";
+      logEl.textContent = "导入失败：" + err.message;
+    }
+  };
+</script>
+</body>
+</html>

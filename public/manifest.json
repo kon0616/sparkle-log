@@ -1,0 +1,22 @@
+{
+  "name": "Sparkle Log · 闪光日记",
+  "short_name": "Sparkle Log",
+  "description": "发现日常中容易被忽略的闪光点。一份温和的自我关怀日记。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#faf5f0",
+  "theme_color": "#c4943a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
