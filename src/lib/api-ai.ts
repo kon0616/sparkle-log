@@ -144,6 +144,146 @@ const PRAISE_SYSTEM = `你是一个敏锐而温和的伙伴。用户注意到了
 // Public API
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Robust JSON extraction
+//
+// LLMs often wrap JSON in markdown fences, prepend/append prose, or omit
+// commas between array elements. These helpers recover a usable structure
+// from those imperfect outputs instead of failing outright.
+// ---------------------------------------------------------------------------
+
+/** Strip markdown code fences (```json ... ```) if present. */
+function stripFences(text: string): string {
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  return fence ? fence[1].trim() : text.trim();
+}
+
+/**
+ * Extract the first balanced `{...}` object from `text`, ignoring braces
+ * that appear inside strings. Falls back to the raw text when no object is
+ * found, so JSON.parse can report a clear error.
+ */
+function extractObject(text: string): string {
+  const start = text.indexOf("{");
+  if (start === -1) return text;
+
+  let depth = 0;
+  let inStr = false;
+  let esc = false;
+  for (let i = start; i < text.length; i++) {
+    const c = text[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === "\\") esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') inStr = true;
+    else if (c === "{") depth++;
+    else if (c === "}") {
+      depth--;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return text;
+}
+
+/** Return the next non-whitespace character at or after `from`. */
+function nextNonSpace(text: string, from: number): string | undefined {
+  let j = from;
+  while (j < text.length && /\s/.test(text[j])) j++;
+  return j < text.length ? text[j] : undefined;
+}
+
+/**
+ * Insert missing commas between adjacent values — a common LLM failure mode,
+ * e.g. `{"steps":[{"content":"a"} {"content":"b"}]}`. String-aware so it never
+ * touches braces or quotes inside a string value.
+ */
+function repairMissingCommas(text: string): string {
+  let out = "";
+  let inStr = false;
+  let esc = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+
+    if (inStr) {
+      out += c;
+      if (esc) {
+        esc = false;
+      } else if (c === "\\") {
+        esc = true;
+      } else if (c === '"') {
+        inStr = false;
+        // A closing quote ends either a key (followed by ':') or a string
+        // value (followed by ',', '}', ']'). When a string value is directly
+        // followed by another value, insert a comma.
+        const next = nextNonSpace(text, i + 1);
+        if (next === "{" || next === "[" || next === '"') out += ",";
+      }
+      continue;
+    }
+
+    if (c === '"') {
+      inStr = true;
+      out += c;
+      continue;
+    }
+
+    out += c;
+    if (c === "}" || c === "]") {
+      const next = nextNonSpace(text, i + 1);
+      if (
+        next === "{" ||
+        next === "[" ||
+        next === '"' ||
+        next === "-" ||
+        next === "t" ||
+        next === "f" ||
+        next === "n" ||
+        (next !== undefined && /\d/.test(next))
+      ) {
+        out += ",";
+      }
+    }
+  }
+
+  return out;
+}
+
+/**
+ * Parse the model's raw output into a list of steps. Tolerates fences, prose,
+ * and missing commas; accepts either `{"steps":[...]}` or a bare `[...]`.
+ */
+function parseSteps(raw: string): { content: string }[] {
+  const candidate = extractObject(stripFences(raw));
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(candidate);
+  } catch {
+    try {
+      parsed = JSON.parse(repairMissingCommas(candidate));
+    } catch {
+      throw new Error(`API 返回的内容无法解析为 JSON：${candidate.slice(0, 120)}`);
+    }
+  }
+
+  const steps = Array.isArray(parsed)
+    ? parsed
+    : (parsed as { steps?: unknown })?.steps;
+
+  if (!Array.isArray(steps) || steps.length === 0) {
+    throw new Error("API 未返回有效的闪光点列表");
+  }
+
+  return steps.map((s) => {
+    const content = (s as { content?: unknown })?.content;
+    return { content: typeof content === "string" ? content : "" };
+  });
+}
+
 /**
  * Extract 3-4 discovery-oriented bright spots from a user's event.
  */
@@ -156,19 +296,11 @@ export async function generateBreakdownReal(
     maxTokens: 800,
   });
 
-  const jsonMatch = raw.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("API 返回的内容无法解析为 JSON");
-
-  const parsed = JSON.parse(jsonMatch[0]);
-  const steps: { content: string }[] = parsed.steps ?? [];
-
-  if (!Array.isArray(steps) || steps.length === 0) {
-    throw new Error("API 未返回有效的闪光点列表");
-  }
+  const steps = parseSteps(raw);
 
   return steps.map((s) => ({
     id: uid(),
-    content: s.content ?? "",
+    content: s.content,
     praise: "",
   }));
 }
