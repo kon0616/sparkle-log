@@ -11,13 +11,55 @@ interface ChatMessage {
   content: string;
 }
 
+interface ChatMessageContentPart {
+  type: string;
+  text?: string;
+}
+
+interface ChatCompletionMessage {
+  content?: string | ChatMessageContentPart[];
+  reasoning_content?: string;
+}
+
+interface ChatCompletionChoice {
+  message?: ChatCompletionMessage;
+  finish_reason?: string;
+}
+
 interface ChatCompletionResponse {
-  choices: { message: { content: string } }[];
+  choices?: ChatCompletionChoice[];
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Extract the assistant's text from an OpenAI-compatible chat response.
+ * Handles the variations different providers return:
+ * - a plain string (`content`)
+ * - an array of parts (multimodal / newer OpenAI format)
+ * - a reasoning model that leaves `content` empty and fills `reasoning_content`
+ */
+function extractTextContent(json: ChatCompletionResponse): string {
+  const message = json.choices?.[0]?.message;
+  const { content } = message ?? {};
+
+  if (typeof content === "string") return content.trim();
+
+  if (Array.isArray(content)) {
+    return content
+      .map((part) => (typeof part.text === "string" ? part.text : ""))
+      .join("")
+      .trim();
+  }
+
+  if (typeof message?.reasoning_content === "string") {
+    return message.reasoning_content.trim();
+  }
+
+  return "";
+}
 
 async function chatCompletion(
   config: SparkleSettings,
@@ -53,8 +95,16 @@ async function chatCompletion(
   }
 
   const json: ChatCompletionResponse = await res.json();
-  const content = json.choices?.[0]?.message?.content;
-  if (!content) throw new Error("API 返回了空的响应内容");
+  const content = extractTextContent(json);
+  if (!content) {
+    const finishReason = json.choices?.[0]?.finish_reason;
+    const snippet = JSON.stringify(json).slice(0, 300);
+    throw new Error(
+      "API 返回了空的响应内容" +
+        (finishReason ? `（finish_reason: ${finishReason}）` : "") +
+        `：${snippet}`
+    );
+  }
 
   return content;
 }
@@ -293,7 +343,7 @@ export async function generateBreakdownReal(
 ): Promise<BreakdownStep[]> {
   const raw = await chatCompletion(config, SPARKLE_SYSTEM, event, {
     temperature: 0.7,
-    maxTokens: 800,
+    maxTokens: 2000,
   });
 
   const steps = parseSteps(raw);
@@ -314,7 +364,7 @@ export async function generatePraiseReal(
 ): Promise<string> {
   const praise = await chatCompletion(config, PRAISE_SYSTEM, step, {
     temperature: 0.9,
-    maxTokens: 200,
+    maxTokens: 500,
   });
   return praise.trim();
 }
